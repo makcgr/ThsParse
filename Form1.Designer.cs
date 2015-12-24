@@ -41,6 +41,12 @@
             this.cbAddDirectionArrows = new System.Windows.Forms.CheckBox();
             this.cbFilterByCallId = new System.Windows.Forms.CheckBox();
             this.label3 = new System.Windows.Forms.Label();
+            this.tcSpecific = new System.Windows.Forms.TabControl();
+            this.tpTHS = new System.Windows.Forms.TabPage();
+            this.label4 = new System.Windows.Forms.Label();
+            this.cbIncludePresenceMsgs = new System.Windows.Forms.CheckBox();
+            this.tcSpecific.SuspendLayout();
+            this.tpTHS.SuspendLayout();
             this.SuspendLayout();
             // 
             // richTextBox1
@@ -49,7 +55,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.richTextBox1.Location = new System.Drawing.Point(12, 12);
             this.richTextBox1.Name = "richTextBox1";
-            this.richTextBox1.Size = new System.Drawing.Size(815, 237);
+            this.richTextBox1.Size = new System.Drawing.Size(815, 159);
             this.richTextBox1.TabIndex = 0;
             this.richTextBox1.Text = "";
             // 
@@ -92,7 +98,7 @@
             // 
             this.txtMsgRegex.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.txtMsgRegex.Location = new System.Drawing.Point(115, 260);
+            this.txtMsgRegex.Location = new System.Drawing.Point(115, 180);
             this.txtMsgRegex.Multiline = true;
             this.txtMsgRegex.Name = "txtMsgRegex";
             this.txtMsgRegex.Size = new System.Drawing.Size(297, 41);
@@ -101,7 +107,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(12, 259);
+            this.label1.Location = new System.Drawing.Point(12, 179);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(88, 13);
             this.label1.TabIndex = 4;
@@ -111,7 +117,7 @@
             // 
             this.txtDateRegex.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.txtDateRegex.Location = new System.Drawing.Point(115, 302);
+            this.txtDateRegex.Location = new System.Drawing.Point(115, 222);
             this.txtDateRegex.Name = "txtDateRegex";
             this.txtDateRegex.Size = new System.Drawing.Size(297, 20);
             this.txtDateRegex.TabIndex = 3;
@@ -120,7 +126,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(12, 306);
+            this.label2.Location = new System.Drawing.Point(12, 226);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(59, 13);
             this.label2.TabIndex = 4;
@@ -130,7 +136,7 @@
             // 
             this.txtCallIdFilter.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.txtCallIdFilter.Location = new System.Drawing.Point(115, 328);
+            this.txtCallIdFilter.Location = new System.Drawing.Point(115, 248);
             this.txtCallIdFilter.Name = "txtCallIdFilter";
             this.txtCallIdFilter.Size = new System.Drawing.Size(297, 20);
             this.txtCallIdFilter.TabIndex = 5;
@@ -140,7 +146,7 @@
             // 
             this.cmbMsgRegex.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.cmbMsgRegex.FormattingEnabled = true;
-            this.cmbMsgRegex.Location = new System.Drawing.Point(473, 259);
+            this.cmbMsgRegex.Location = new System.Drawing.Point(473, 179);
             this.cmbMsgRegex.Name = "cmbMsgRegex";
             this.cmbMsgRegex.Size = new System.Drawing.Size(354, 21);
             this.cmbMsgRegex.TabIndex = 6;
@@ -150,7 +156,7 @@
             // 
             this.cbAddDirectionArrows.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.cbAddDirectionArrows.AutoSize = true;
-            this.cbAddDirectionArrows.Location = new System.Drawing.Point(475, 283);
+            this.cbAddDirectionArrows.Location = new System.Drawing.Point(475, 203);
             this.cbAddDirectionArrows.Name = "cbAddDirectionArrows";
             this.cbAddDirectionArrows.Size = new System.Drawing.Size(122, 17);
             this.cbAddDirectionArrows.TabIndex = 7;
@@ -160,7 +166,7 @@
             // cbFilterByCallId
             // 
             this.cbFilterByCallId.AutoSize = true;
-            this.cbFilterByCallId.Location = new System.Drawing.Point(15, 330);
+            this.cbFilterByCallId.Location = new System.Drawing.Point(15, 250);
             this.cbFilterByCallId.Name = "cbFilterByCallId";
             this.cbFilterByCallId.Size = new System.Drawing.Size(94, 17);
             this.cbFilterByCallId.TabIndex = 8;
@@ -171,17 +177,59 @@
             // 
             this.label3.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(433, 262);
+            this.label3.Location = new System.Drawing.Point(433, 182);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(34, 13);
             this.label3.TabIndex = 9;
             this.label3.Text = "Mode";
+            // 
+            // tcSpecific
+            // 
+            this.tcSpecific.Controls.Add(this.tpTHS);
+            this.tcSpecific.Location = new System.Drawing.Point(473, 236);
+            this.tcSpecific.Name = "tcSpecific";
+            this.tcSpecific.SelectedIndex = 0;
+            this.tcSpecific.Size = new System.Drawing.Size(354, 109);
+            this.tcSpecific.TabIndex = 10;
+            // 
+            // tpTHS
+            // 
+            this.tpTHS.Controls.Add(this.cbIncludePresenceMsgs);
+            this.tpTHS.Location = new System.Drawing.Point(4, 22);
+            this.tpTHS.Name = "tpTHS";
+            this.tpTHS.Padding = new System.Windows.Forms.Padding(3);
+            this.tpTHS.Size = new System.Drawing.Size(346, 83);
+            this.tpTHS.TabIndex = 0;
+            this.tpTHS.Text = "THS log";
+            this.tpTHS.UseVisualStyleBackColor = true;
+            // 
+            // label4
+            // 
+            this.label4.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.label4.AutoSize = true;
+            this.label4.Location = new System.Drawing.Point(425, 240);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(45, 13);
+            this.label4.TabIndex = 9;
+            this.label4.Text = "Specific";
+            // 
+            // cbIncludePresenceMsgs
+            // 
+            this.cbIncludePresenceMsgs.AutoSize = true;
+            this.cbIncludePresenceMsgs.Location = new System.Drawing.Point(10, 12);
+            this.cbIncludePresenceMsgs.Name = "cbIncludePresenceMsgs";
+            this.cbIncludePresenceMsgs.Size = new System.Drawing.Size(158, 17);
+            this.cbIncludePresenceMsgs.TabIndex = 0;
+            this.cbIncludePresenceMsgs.Text = "Include presence messages";
+            this.cbIncludePresenceMsgs.UseVisualStyleBackColor = true;
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(839, 619);
+            this.Controls.Add(this.tcSpecific);
+            this.Controls.Add(this.label4);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.cbFilterByCallId);
             this.Controls.Add(this.cbAddDirectionArrows);
@@ -198,6 +246,9 @@
             this.MinimumSize = new System.Drawing.Size(800, 600);
             this.Name = "Form1";
             this.Text = "Parse messages";
+            this.tcSpecific.ResumeLayout(false);
+            this.tpTHS.ResumeLayout(false);
+            this.tpTHS.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -218,6 +269,10 @@
         private System.Windows.Forms.CheckBox cbAddDirectionArrows;
         private System.Windows.Forms.CheckBox cbFilterByCallId;
         private System.Windows.Forms.Label label3;
+        private System.Windows.Forms.TabControl tcSpecific;
+        private System.Windows.Forms.TabPage tpTHS;
+        private System.Windows.Forms.Label label4;
+        private System.Windows.Forms.CheckBox cbIncludePresenceMsgs;
     }
 }
 

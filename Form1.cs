@@ -25,7 +25,7 @@ namespace ParseTHSMsg
             DtRegexMsg.Columns.Add("Regex", typeof(string));
             DtRegexMsg.Columns.Add("DisplayName", typeof(string));
             DtRegexMsg.Columns.Add("DirectionInRegex", typeof(string));
-            DtRegexMsg.Columns.Add("DirectionOutRegex", typeof(string));
+            DtRegexMsg.Columns.Add("DirectionOutRegex", typeof(string));    
 
             DtRegexMsg.LoadDataRow(new object[] { 0, "", "None", "", "" }, false);
             DtRegexMsg.LoadDataRow(new object[] { 1, @"(Sent\smessage\sto|Received\smessage\sfrom)", "For THS log messages", @"Received\smessage", @"Sent\smessage" }, false);
@@ -73,6 +73,7 @@ namespace ParseTHSMsg
                             sbMsg.Append(s);
 
                             var isCallIdMatch = !isFilterByCallId;
+                            var hasPresenceLine = false;
 
                             var checkNextLine = true;
                             while (checkNextLine && i < count)
@@ -82,34 +83,47 @@ namespace ParseTHSMsg
                                 {
                                     isCallIdMatch = regCallId.IsMatch(s);
                                 }
+                                if (s.Contains("<presence>")||s.Contains("<presence_update>"))
+                                    hasPresenceLine = true;
+
                                 if (!regDateStamp.IsMatch(s))
                                     sbMsg.Append(Environment.NewLine + s);
                                 else
                                     checkNextLine = false;
                             }
 
-                            if (!isFilterByCallId || isCallIdMatch)
+                            //check user filters
+
+                            //callId filter
+                            if (isFilterByCallId && !isCallIdMatch)
+                                continue;
+
+                            //"include presence" filter                            
+                            if (tcSpecific.Enabled && !cbIncludePresenceMsgs.Checked)
                             {
-                                var msg = sbMsg.ToString();
-
-                                string txtReceived = null;
-                                string txtSent = null;
-
-                                if (cbAddDirectionArrows.Checked)
-                                {
-                                    var regReceived = new Regex((string) DtRegexMsg.Rows[cmbMsgRegex.SelectedIndex]["DirectionInRegex"]);
-                                    var regSent = new Regex((string) DtRegexMsg.Rows[cmbMsgRegex.SelectedIndex]["DirectionOutRegex"]);
-
-                                    txtReceived = regReceived.IsMatch(msg)
-                                        ? "<----------------------------" + Environment.NewLine
-                                        : null;
-                                    txtSent = regSent.IsMatch(msg)
-                                        ? "---------------------------->" + Environment.NewLine
-                                        : null;
-                                }
-
-                                sb.Append(string.Concat(txtReceived, txtSent, msg, Environment.NewLine));
+                                if (hasPresenceLine)
+                                    continue;
                             }
+
+                            string txtReceived = null;
+                            string txtSent = null;
+
+                            var msg = sbMsg.ToString();
+                            if (cbAddDirectionArrows.Checked)
+                            {
+                                var regReceived = new Regex((string) DtRegexMsg.Rows[cmbMsgRegex.SelectedIndex]["DirectionInRegex"]);
+                                var regSent = new Regex((string) DtRegexMsg.Rows[cmbMsgRegex.SelectedIndex]["DirectionOutRegex"]);
+
+                                txtReceived = regReceived.IsMatch(msg)
+                                    ? "<----------------------------" + Environment.NewLine
+                                    : null;
+                                txtSent = regSent.IsMatch(msg)
+                                    ? "---------------------------->" + Environment.NewLine
+                                    : null;
+                            }
+
+                            sb.Append(string.Concat(txtReceived, txtSent, msg, Environment.NewLine));
+                            
                         }
                     }
                 }
@@ -125,6 +139,12 @@ namespace ParseTHSMsg
         private void cmbMsgRegex_SelectedIndexChanged(object sender, EventArgs e)
         {
             this.txtMsgRegex.Text = Convert.ToString(cmbMsgRegex.SelectedValue);
+            this.tcSpecific.Enabled = Convert.ToInt32(cmbMsgRegex.SelectedIndex) == 1; // for THS
+            if(Convert.ToInt32(cmbMsgRegex.SelectedIndex) == 1)
+            {
+                tcSpecific.SelectTab(tpTHS);
+            }
+            
         }
     }
 }
