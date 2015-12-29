@@ -14,34 +14,35 @@ namespace ParseTHSMsg
 {
     public partial class Form1 : Form
     {
-        
+        static readonly DataTable DtRegexMsg = new DataTable();
         static readonly Dictionary<Guid, string> DictRegexMsg = new Dictionary<Guid, string>();
 
         public Form1()
         {
             InitializeComponent();
 
-            DataTable dt = tTemplates;
+            DtRegexMsg.Columns.Add("Id", typeof(int));
+            DtRegexMsg.Columns.Add("Regex", typeof(string));
+            DtRegexMsg.Columns.Add("DisplayName", typeof(string));
+            DtRegexMsg.Columns.Add("DirectionInRegex", typeof(string));
+            DtRegexMsg.Columns.Add("DirectionOutRegex", typeof(string));    
 
-            string sDtRegCommon = @"(?<Year>(?:\d{4}))-(?<Month>\d{2})-(?<Day>\d{2})\s\d{2}:\d{2}:\d{2},\d{6}\s";
-
-            dt.LoadDataRow(new object[] { 0, "", "None", "", "", false, "" }, false);
-            dt.LoadDataRow(new object[] { 1, @"(Sent\smessage\sto|Received\smessage\sfrom)", "For THS log messages", @"Received\smessage", @"Sent\smessage", false, sDtRegCommon}, false);
-            dt.LoadDataRow(new object[] { 2, @"(SENDING\sMESSAGE\sTO\s|RECEIVED\sMESSAGE\sFROM\s)", "For buddyconsole log messages", @"RECEIVED\sMESSAGE", @"SENDING\sMESSAGE", false, sDtRegCommon }, false);
-            dt.LoadDataRow(new object[] { 3, @"(Sending\smessage\sto\sXMPP\sDomain|Parsed\sXMPP\smessage)", "For XMPP messages", @"Parsed\sXMPP\smessage", @"Sending\smessage\sto\sXMPP\sDomain", false, sDtRegCommon }, false);
-            dt.LoadDataRow(new object[] { 4, @"onReceiveEvent\sRTSMCallEvent", "For chameleon RTSMCallEvent messages", @"", @"", false, @"(?<Day>\d{2})\s(?<Month>\D{3})\s(?<Year>\d{4})\s(?<Time>\d{2}:\d{2}:\d{2},\d{3}\s)" }, false);
+            DtRegexMsg.LoadDataRow(new object[] { 0, "", "None", "", "" }, false);
+            DtRegexMsg.LoadDataRow(new object[] { 1, @"(Sent\smessage\sto|Received\smessage\sfrom)", "For THS log messages", @"Received\smessage", @"Sent\smessage" }, false);
+            DtRegexMsg.LoadDataRow(new object[] { 2, @"(SENDING\sMESSAGE\sTO\s|RECEIVED\sMESSAGE\sFROM\s)", "For buddyconsole log messages", @"RECEIVED\sMESSAGE", @"SENDING\sMESSAGE" }, false);
+            DtRegexMsg.LoadDataRow(new object[] { 3, @"(Sending\smessage\sto\sXMPP\sDomain|Parsed\sXMPP\smessage)", "For XMPP messages", @"Parsed\sXMPP\smessage", @"Sending\smessage\sto\sXMPP\sDomain" }, false);
 
             cmbMsgRegex.DisplayMember = "DisplayName";
             cmbMsgRegex.ValueMember = "Regex";
+            cmbMsgRegex.DataSource = DtRegexMsg;
 
-            bindingSource1.DataSource = dt;
-            
+            cmbMsgRegex.SelectedIndex = 1;
             cbAddDirectionArrows.Checked = true;
         }
 
         private void button2_Click(object sender, EventArgs e)
         {
-            Clipboard.SetText(rtResults.Text);
+            Clipboard.SetText(richTextBox2.Text);
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -110,8 +111,8 @@ namespace ParseTHSMsg
                             var msg = sbMsg.ToString();
                             if (cbAddDirectionArrows.Checked)
                             {
-                                var regReceived = new Regex((string) tTemplates.Rows[cmbMsgRegex.SelectedIndex]["DirectionInRegex"]);
-                                var regSent = new Regex((string)tTemplates.Rows[cmbMsgRegex.SelectedIndex]["DirectionOutRegex"]);
+                                var regReceived = new Regex((string) DtRegexMsg.Rows[cmbMsgRegex.SelectedIndex]["DirectionInRegex"]);
+                                var regSent = new Regex((string) DtRegexMsg.Rows[cmbMsgRegex.SelectedIndex]["DirectionOutRegex"]);
 
                                 txtReceived = regReceived.IsMatch(msg)
                                     ? "<----------------------------" + Environment.NewLine
@@ -132,23 +133,17 @@ namespace ParseTHSMsg
                 MessageBox.Show(ex.ToString());
             }
 
-            rtResults.Text = sb.ToString();
+            richTextBox2.Text = sb.ToString();
         }
 
         private void cmbMsgRegex_SelectedIndexChanged(object sender, EventArgs e)
         {
-            //this.txtMsgRegex.Text = Convert.ToString(cmbMsgRegex.SelectedValue);
-
-            DataRowView view = (bindingSource1.Current as DataRowView);
-            if(view!=null)
+            this.txtMsgRegex.Text = Convert.ToString(cmbMsgRegex.SelectedValue);
+            this.tcSpecific.Enabled = Convert.ToInt32(cmbMsgRegex.SelectedIndex) == 1; // for THS
+            if(Convert.ToInt32(cmbMsgRegex.SelectedIndex) == 1)
             {
-                int ix = (int)view["Id"];
-                this.tcSpecific.Enabled = ix == 1; // for THS
-                if (ix == 1)
-                {
-                    tcSpecific.SelectTab(tpTHS);
-                }
-            }           
+                tcSpecific.SelectTab(tpTHS);
+            }
             
         }
     }
