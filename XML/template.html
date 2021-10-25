@@ -1,0 +1,36 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Page title</title>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+    <script type="text/javascript">
+        function expandAll() {
+            var details = document.getElementsByTagName("details");
+            var len = details.length;
+            for (var i = 0; i < len; i++) {
+                if (!details[i].hasAttribute("open")) {
+                    details[i].setAttribute("open", "");
+                }
+            }
+        };
+
+        function collapseAll() {
+            var details = document.getElementsByTagName("details");
+            var len = details.length;
+            for (var i = 0; i < len; i++) {
+                if (details[i].hasAttribute("open")) {
+                    details[i].removeAttribute("open");
+                }
+            }
+        };
+
+    </script>
+</head>
+<body>
+    <div class="description">Some caption text / description</div>
+    <button onclick="expandAll();">Expand all nodes</button>&nbsp;&nbsp;<button onclick="collapseAll();">Collapse all nodes</button>
+    {0}
+</body>
+</html>
+

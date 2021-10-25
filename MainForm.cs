@@ -13,6 +13,12 @@ using Microsoft.WindowsAPICodePack.Dialogs;
 using System.Xml.Serialization;
 using System.Xml;
 using System.Xml.Xsl;
+using System.Globalization;
+using System.Diagnostics;
+using ParseTHSMsg.ClipboardParsing;
+using ParseTHSMsg.AutomaticParsing;
+using ParseTHSMsg.ReportCreation;
+using System.Threading;
 
 namespace ParseTHSMsg
 {
@@ -22,170 +28,97 @@ namespace ParseTHSMsg
         
         static readonly Dictionary<Guid, string> DictRegexMsg = new Dictionary<Guid, string>();
 
-        string sDtRegCommon = @"(?<Year>(?:\d{4}))-(?<Month>\d{2})-(?<Day>\d{2})\s\d{2}:\d{2}:\d{2},\d{6}\s";
-
-        string sDtRegCommon2 = @"(?<Day>\d{2})\s(?<Month>\D{3})\s(?<Year>\d{4})\s(?<Time>\d{2}:\d{2}:\d{2},\d{3}\s)";
-
-        string sCallIdRegCommon = @"Call-ID:\s";
+        string sLastReportUrl = null;
 
         List<Message> messages = new List<Message>();
+
+
 
         public MainForm()
         {
             InitializeComponent();
 
-            DataTable dt = tTemplates;            
-
-            dt.LoadDataRow(new object[] { 1, @"(Sent\smessage\sto|Received\smessage\sfrom)", "For THS log messages", @"Received\smessage", @"Sent\smessage", false, sDtRegCommon, sCallIdRegCommon }, true);
-            dt.LoadDataRow(new object[] { 2, @"(SENDING\sMESSAGE\sTO\s|RECEIVED\sMESSAGE\sFROM\s)", "For buddyconsole log messages", @"RECEIVED\sMESSAGE", @"SENDING\sMESSAGE", false, sDtRegCommon , sCallIdRegCommon }, true);
-
-            dt.LoadDataRow(new object[] { 3, @"(tns\s-\s=====|tns\s-\sMessage)", "For TNS", @"tns\s-\s=====", @"tns\s-\sMessage", false, sDtRegCommon, sCallIdRegCommon }, true);
-            dt.LoadDataRow(new object[] { 4, @"(Sending\s|Received\s)", "For tp240dvr", @"Sending\s", @"Received\s", false, sDtRegCommon, sCallIdRegCommon }, true);
-
-            dt.LoadDataRow(new object[] { 5, @"(Sending\smessage\sto\sXMPP\sDomain|Parsed\sXMPP\smessage)", "For XMPP messages", @"Parsed\sXMPP\smessage", @"Sending\smessage\sto\sXMPP\sDomain", false, sDtRegCommon , sCallIdRegCommon }, true);
-            
-
-            dt.LoadDataRow(new object[] { 6, @"onReceiveEvent\sRTSMCallEvent", "For chameleon RTSMCallEvent messages", @"", @"", true, sDtRegCommon2, @"callRef:\s" }, true);
-            dt.LoadDataRow(new object[] { 7, @"ServerInterface.UpdateCall", "OTC_PC log - ServerInterface.UpdateCall", @"", @"", true, sDtRegCommon2, @"" }, true);
+            #region Init of Manual Parser
+            ClipboardParserSettings.FillData(tTemplates);
 
             cmbTemplate.DisplayMember = "DisplayName";
             cmbTemplate.ValueMember = "Regex";
 
-            bindingSource1.DataSource = dt;   
+            bsLogParserSettingsByType.DataSource = tTemplates;
+            #endregion
+
+            dictMatchingSettingsByType = SettingsEntry.ReadFromFile(@"AutomaticParsing\Settings\LogMatchingSettings.xml");
+            var sbRegexText = new StringBuilder();
+            var settings = dictMatchingSettingsByType.Values;
+
+            foreach(var s in settings)
+            {
+                sbRegexText.AppendFormat("({0})",s.LogFileNameMask);
+                if (s != settings.Last())
+                    sbRegexText.Append("|");
+            }
+           
+            this.rgxMatchFilenames = new Regex(sbRegexText.ToString());
         }
-        
-        private void button1_Click(object sender, EventArgs e)
-        {          
 
-            var sb = this.sbSourceText;
-            var sbResult = new StringBuilder();
-
-            var regLine = new Regex(txtMsgRegex.Text);
-            var regDateStamp = new Regex(txtDateRegex.Text);
-
+        private void btnManualModeParse_Click(object sender, EventArgs e)
+        {           
+            var sRegexLine = txtMsgRegex.Text;
+            var sRegexDate = txtDateRegex.Text;
             var isFilterByCallId = cbFilterByCallId.Checked;
-            var regCallId = isFilterByCallId ? new Regex(txtCallIdFilter.Text) : null ;
+            var sCallIdFilter = txtCallIdFilter.Text;
+            var bIncludeHeartbeat = cbIncludeHeartbeat.Checked;
+            var bIncludeSIP200 = cbIncludeSIP200.Checked;
+            var bIncludePresenceMsgs = tcSpecific.Enabled && cbIncludePresenceMsgs.Checked;
+            var bDecorateWithDirectionArrows = cbAddDirectionArrows.Checked;
+            var sArrowDecorationIn = "<----------------------------";
+            var sArrowDecorationOut = "---------------------------->";
 
-            var regHeartbeat = cbIncludeHeartbeat.Checked ? null : new Regex("HEARTBEAT");
 
-            var regSIP200OK = cbIncludeSIP200.Checked ? null : new Regex("SIP/2.0 200 OK");
+            string strDirectionInRegex = GetRegexSetting("DirectionInRegex");
+            string strDirectionOutRegex = GetRegexSetting("DirectionOutRegex");
 
-            var count = sb.ToString().Lines();
-
-            //11
-            
+            StringBuilder sbResult = null;
             try
             {
-                using (var sr = new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(sb.ToString()))))
-                {
-                    for (int i = 0; i < count; i++)
-                    {
-                        var sbMsg = new StringBuilder();
-
-                        var s = sr.ReadLine() ?? "";
-                        
-                        if (regLine.IsMatch(s))
-                        {
-                            sbMsg.Append(s);
-
-                            var isCallIdMatch = !isFilterByCallId;
-                            var hasPresenceLine = false;
-
-                            var checkNextLine = true;
-                            while (checkNextLine && i < count)
-                            {
-                                s = sr.ReadLine() ?? ""; i++;
-                                if (isFilterByCallId && !isCallIdMatch)
-                                {
-                                    isCallIdMatch = regCallId.IsMatch(s);
-                                }
-                                if (s.Contains("<presence>") || s.Contains("<presence_update>"))
-                                    hasPresenceLine = true;
-
-                                if (!regDateStamp.IsMatch(s))
-                                    sbMsg.Append(Environment.NewLine + s);
-                                else
-                                    checkNextLine = false;
-                            }
-
-                            //check user filters
-
-                            //callId filter
-                            if (isFilterByCallId && !isCallIdMatch)
-                                continue;                                       
-
-                            //"include presence" filter                            
-                            if (tcSpecific.Enabled && !cbIncludePresenceMsgs.Checked)
-                            {
-                                if (hasPresenceLine)
-                                    continue;
-                            }
-
-                            string txtReceived = null;
-                            string txtSent = null;
-
-                            var msg = sbMsg.ToString();
-
-                            if (regSIP200OK != null)
-                            {
-                                if (regSIP200OK.IsMatch(msg))
-                                    continue;
-                            }
-
-                            if (regHeartbeat != null)
-                            {
-                                if (regHeartbeat.IsMatch(msg))
-                                    continue;
-                            }
-
-                            if (cbAddDirectionArrows.Checked)
-                            {
-                                DataRowView view = (bindingSource1.Current as DataRowView);
-                                if (view != null)
-                                {
-                                    string sRec = (string)view["DirectionInRegex"];
-                                    string sSent = (string)view["DirectionOutRegex"];
-                                    if (!string.IsNullOrEmpty(sRec) && !string.IsNullOrEmpty(sSent))
-                                    {
-
-                                        var regReceived = new Regex((string)tTemplates.Rows[cmbTemplate.SelectedIndex]["DirectionInRegex"]);
-                                        var regSent = new Regex((string)tTemplates.Rows[cmbTemplate.SelectedIndex]["DirectionOutRegex"]);
-
-                                        txtReceived = regReceived.IsMatch(msg)
-                                            ? "<----------------------------" + Environment.NewLine
-                                            : null;
-                                        txtSent = regSent.IsMatch(msg)
-                                            ? "---------------------------->" + Environment.NewLine
-                                            : null;
-                                    }
-                                }
-
-
-                            }
-
-                            sbResult.Append(string.Concat(txtReceived, txtSent, msg, Environment.NewLine));
-
-                        }
-                    }
-                }
+                sbResult = ClipboardParser.ParseMessages(
+                    this.sbSourceText,
+                    sRegexLine,
+                    sRegexDate,
+                    isFilterByCallId,
+                    sCallIdFilter,
+                    bIncludeHeartbeat,
+                    bIncludeSIP200,
+                    bIncludePresenceMsgs,
+                    bDecorateWithDirectionArrows,
+                    sArrowDecorationIn,
+                    sArrowDecorationOut,
+                    strDirectionInRegex, 
+                    strDirectionOutRegex);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.ToString());
+                MessageBox.Show("Error: " + ex);
+                return;
             }
+
             string strRes = sbResult.ToString();
             if(!string.IsNullOrEmpty(strRes)) Clipboard.SetText(strRes);
             this.lblResultToBufferStatus.Text = "Result copied to clipboard " + DateTime.Now.ToLongTimeString();
             this.lblParsedPreview.Text = strRes.GetFirstNLines(10);
         }
-
-
+        
+        private string GetRegexSetting(string settingName)
+        {
+            DataRowView view = (bsLogParserSettingsByType.Current as DataRowView);
+            return (view == null ? null : (string)view[settingName]);            
+        }
         
 
         private void cmbMsgRegex_SelectedIndexChanged(object sender, EventArgs e)
         {
             //this.txtMsgRegex.Text = Convert.ToString(cmbMsgRegex.SelectedValue);
-            DataRowView view = (bindingSource1.Current as DataRowView);
+            DataRowView view = (bsLogParserSettingsByType.Current as DataRowView);
             if(view!=null)
             {
                 int ix = (int)view["Id"];
@@ -239,6 +172,7 @@ namespace ParseTHSMsg
             mLogsToProcess.Clear();
             sDirectorySelected = "";
             this.rtbPickedFolder.Text = "-";
+            this.clbFoundLogTypes.Items.Clear();
             
 
             //FolderBrowserDialog fbd = new FolderBrowserDialog();
@@ -254,27 +188,39 @@ namespace ParseTHSMsg
                 return;
             }            
 
-            if (!string.IsNullOrWhiteSpace(ofd.FileName))
+            if (!string.IsNullOrWhiteSpace(ofd.FileName) && rgxMatchFilenames!=null)
             {
-                sDirectorySelected = ofd.FileName;
-                var files = Directory.GetFiles(sDirectorySelected).OrderBy(f => f);
+                sDirectorySelected = ofd.FileName;                
+
+                var files = Directory.EnumerateFiles(sDirectorySelected, "*.*", SearchOption.AllDirectories)
+                    .Where(f => rgxMatchFilenames.IsMatch(f))
+                    .OrderBy(f => f);                
 
                 this.rtbPickedFolder.Text = "";
+                this.clbFoundLogTypes.Items.Clear();
+
                 //System.Windows.Forms.MessageBox.Show("Files found: " + files.Length.ToString(), "Message");
                 foreach (string fname in files)
                 {
                     var logType = GetLogFileType(fname);
                     if (logType != SourceType.Unknown)
                     { 
-                        mLogsToProcess.Add(new ACSLogFile() { LogFileName = fname, SourceType = logType, LogInfo = logTypeInfo[logType] }) ;
-
+                        mLogsToProcess.Add(new ACSLogFile() { LogFileName = fname, SourceType = logType, MatcherSettings = dictMatchingSettingsByType[logType] }) ;
+                        
                         this.rtbPickedFolder.Text +=
                             string.Concat(
-                                string.Format("Type:       {0}{1}", logType, Environment.NewLine),
+                                string.Format("Type:       {0}{1}",
+                                    logType, 
+                                    Environment.NewLine),
                                 string.Format("FileName:   {0}{1}{1}", fname, Environment.NewLine)
                                 );
                         this.rtbPickedFolder.ScrollToCaret();
                     }
+                }
+                var distinctLogTypes = mLogsToProcess.GroupBy(log => log.SourceType).Select(g => g.First().SourceType).ToArray();
+                foreach(var item in distinctLogTypes)
+                {
+                    clbFoundLogTypes.Items.Add(item.ToString());
                 }
             }
         }
@@ -286,27 +232,27 @@ namespace ParseTHSMsg
                 if (t == SourceType.Unknown)
                     continue;
 
-                var rgx = logTypeInfo[t].LogFileNameRgx;
+                var rgx = new Regex(dictMatchingSettingsByType[t].LogFileNameMask);
                 if (rgx != null && rgx.IsMatch(fname))
                     return t;
             }
             return SourceType.Unknown;
         }
 
-        
 
-        private Dictionary<SourceType, ACSLogFileTypeInfo> logTypeInfo = new Dictionary<SourceType, ACSLogFileTypeInfo>()
-        {
-            { SourceType.Tpdrv, new ACSLogFileTypeInfo(@"tp240dvr\.log", @"(Sending\s|Received\s)",@"Received\s", @"Sending\s")},
-            { SourceType.Ths, new ACSLogFileTypeInfo(@"ths\.log",@"(Sent\smessage\sto|Received\smessage\sfrom)",@"Received\smessage\sfrom",@"Sent\smessage\sto") },
-            { SourceType.Tns, new ACSLogFileTypeInfo(@"tns\.log",@"(tns\s-\s=====|tns\s-\sMessage)",@"tns\s-\s=====",@"tns\s-\sMessage") },
-            { SourceType.Buddy, new ACSLogFileTypeInfo(@"buddy\.log",@"(SENDING\sMESSAGE\sTO\s|RECEIVED\sMESSAGE\sFROM\s)",@"RECEIVED\sMESSAGE\sFROM\s",@"SENDING\sMESSAGE\sTO\s") }
-        };
 
-        private void btnGenSIPCCFIles_Click(object sender, EventArgs e)
+        private Dictionary<SourceType, MessageMatcherSettings> dictMatchingSettingsByType = null;
+        private Regex rgxMatchFilenames = null;
+
+        private void btnGenReport_Click(object sender, EventArgs e)
         {
             try
             {
+                this.Cursor = Cursors.WaitCursor;
+                this.llReport.Visible = false;
+                this.lblStatus.Visible = true;
+                this.lblStatus.Text = "Working...";
+
                 if (mLogsToProcess.Count == 0)
                 {
                     MessageBox.Show("No files to process!");
@@ -315,75 +261,80 @@ namespace ParseTHSMsg
 
                 this.rtbGenSipCC.Text = "";
 
-                //create dir            
-                var timeNow = DateTime.Now;
-                var sDateTime = timeNow.ToString("dd-MM-yyyy_hh-mm-ss");
-                var sOptionalParam = cbAutoFilterCallId.Checked ? 
-                    string.Format("_Call-ID_{0}_", tbAutoFilterCallId.Text) : null;
-                
-                string directory = Path.Combine(this.sDirectorySelected, 
-                    string.Concat("SIPCC_", sDateTime, sOptionalParam, Guid.NewGuid()));
-                Directory.CreateDirectory(directory);
+                string directory = null;
+                if (!ReportCreator.TryCreateDirectory(sDirectorySelected,out directory))
+                {
+                    MessageBox.Show("Error: can't create report directory!");
+                    return;
+                }
+
+                var settUIFilters = CreateUIFilterSettings();
+                var doCreateSeparateMessageLists = cbCreateSeparateMsgLists.Checked;
 
                 messages.Clear();
-                foreach (var logFile in mLogsToProcess)
+
+                var logTypeSelection = new List<SourceType>();
+                for(int i=0; i< clbFoundLogTypes.Items.Count; i++)
                 {
-                    var isFilterByCallId = cbAutoFilterCallId.Checked;
-
-                    var settings = LogProcessor.CreateSettingsFromACSLogFile(logFile);
-                    settings.CallIdFilterText = isFilterByCallId ? Constants.CallIdRegCommon + tbAutoFilterCallId.Text : null;
-                    var lp = new LogProcessor();
-                    var resultPath = lp.ProcessLogFile(directory, settings, m=>messages.Add(m) );
-                    this.rtbGenSipCC.Text += string.Format("Generated file:{0}{1}{0}{0}", 
-                        Environment.NewLine, resultPath);
-
-                    System.GC.Collect(); 
-                    GC.WaitForPendingFinalizers();
+                    var item = clbFoundLogTypes.Items[i];
+                    SourceType parsed = SourceType.Unknown;
+                    Enum.TryParse<SourceType>(item.ToString(), out parsed);
+                    if (parsed != SourceType.Unknown && clbFoundLogTypes.GetItemChecked(i))
+                        logTypeSelection.Add(parsed);
                 }
 
+                var logFilesToProcess = logTypeSelection.Count == 0
+                        ? mLogsToProcess.AsEnumerable()
+                        : mLogsToProcess.Where(l => logTypeSelection.Contains(l.SourceType));             
 
-                var tempXmlPath = Path.Combine(directory,String.Concat(Guid.NewGuid(),".xml"));
+                try
+                {
+                    ReportCreator.ExtractMessagesFromFiles(logFilesToProcess, directory, messages, settUIFilters, 
+                        doCreateSeparateMessageLists, UpdateUI);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.ToString());                        
+                }
+
                 var msgList = new MessageList(messages.OrderBy(m => m.Timestamp));
-                using (StreamWriter streamWriter = System.IO.File.CreateText(tempXmlPath))
-                {
-                    var xmlSerializer = new XmlSerializer(msgList.GetType());
-                    xmlSerializer.Serialize(streamWriter, msgList);
-                }
+
+
+                var messagesSerializedToXmlPath = ReportCreator.SerializeMessagesToXmlReport(msgList, tbTraceSetDescription.Text, directory);
                 this.rtbGenSipCC.Text += string.Format(
-                    "Generated temporary xml file:{0}{1}{0}{0}", Environment.NewLine, tempXmlPath);
+                    "Generated temporary xml file:{0}{1}{0}{0}", Environment.NewLine, messagesSerializedToXmlPath);
 
-                //TODO: load XML\transform.xsl, give it intermediate xml and produce final html output
-                {
-                    var htmlOutputPath = Path.Combine(directory, "output.html");
+                //create HTML report using XSL template applied to messages XML representation
 
-                    // Create a reader to read temp xml
-                    using (XmlReader reader = XmlReader.Create(tempXmlPath))
-                    // Create a writer for writing the transformed file.
-                    using (XmlWriter writer = XmlWriter.Create(htmlOutputPath))
-                    {
-                        // Create and load the transform with script execution enabled.
-                        XslCompiledTransform transform = new XslCompiledTransform();
-                        XsltSettings settings = new XsltSettings();
-                        settings.EnableScript = true;
-                        transform.Load(Path.Combine(Application.StartupPath, @"XML\transform.xsl"), settings, null);
+                var xslPath = Path.Combine(Application.StartupPath, @"XML\transform.xsl");
 
-                        // Execute the transformation.
-                        transform.Transform(reader, writer);
-                    }
-                }
+                // Report creator will need the chosen source types list to generate html columns markup
+                // Do not show columns without messages
+                var distinctTypesFromMessages = messages.GroupBy(m => m.SourceType).Select(g => g.First().SourceType).OrderBy(st => (int) st);
+                var htmlOutputPath = ReportCreator.CreateHtmlMessagesReport(distinctTypesFromMessages, directory, 
+                    xslPath, messagesSerializedToXmlPath, msgList.Messages.Count);
 
                 //Copy styles file to the same directory
+
                 File.Copy(
-                    Path.Combine(Application.StartupPath, @"XML\style.css"), 
+                    Path.Combine(Application.StartupPath, @"XML\style.css"),
                     Path.Combine(directory, "style.css"));
 
+                Clipboard.SetText(htmlOutputPath);
+                this.sLastReportUrl = htmlOutputPath;
+                this.llReport.Visible = true;
+                this.lblStatus.Text = "READY!";
+
                 this.rtbGenSipCC.Text +=
-                string.Format("{0}{1}{0}{2}{0}{3}{0}{4}",
+                string.Format("{0}{1}{0}{2}{0}{3}{0}{4}{0}{5}",
                     Environment.NewLine,
                     "READY!",
-                    string.Format("Generated {0} SIP CC files ", mLogsToProcess.Count),
-                    string.Format("Generated html representation for {0} SIP CC messages", msgList.Messages.Count),
-                    string.Format("Finished {0}",DateTime.Now.ToLongTimeString()));
+                     doCreateSeparateMessageLists ? string.Format("▤ Generated {0} message file(s) ", mLogsToProcess.Count) : "",
+                    string.Format("✿ Generated html representation for {0} message(s):{1}{2}", 
+                        msgList.Messages.Count, Environment.NewLine, htmlOutputPath),
+                    "✎ HTML report path copied to clipboard",
+                    string.Format("✔ Finished {0}", DateTime.Now.ToLongTimeString()));
+                this.rtbGenSipCC.Focus();       
                 this.rtbGenSipCC.ScrollToCaret();
             }
             catch (Exception ex)
@@ -391,10 +342,57 @@ namespace ParseTHSMsg
                 this.rtbGenSipCC.Text = "ERROR!";
                 MessageBox.Show("An error occured: " + ex);                
             }
+            finally
+            {
+                this.Cursor = Cursors.Default;
+            }
             
+        }       
+
+        public void UpdateUI(string statusInfo)
+        {
+            Invoke(new Action(() => this.rtbGenSipCC.Text += statusInfo));
         }
 
-        
+        private UIFilterSettings CreateUIFilterSettings()
+        {
+            var settUIFilters = new UIFilterSettings();
+
+            settUIFilters.IncludePresenceMsgs = this.cbAutoIncludePresense.Checked;
+            settUIFilters.ExcludeThsMonitorMessages = true;
+            
+            if (cbAutoFilterCallId.Checked)
+            {
+                string sCallIdRegex = @"Call-ID:\s";
+                if (tbAutoFilterCallId.Text.Contains(","))
+                {
+                    sCallIdRegex +=
+                        string.Concat(
+                            "(",
+                            string.Join("|", tbAutoFilterCallId.Text.Split(',').Select(s => Regex.Escape(s.Trim())).ToArray()),
+                            ")");
+                }
+                else
+                {
+                    sCallIdRegex += tbAutoFilterCallId.Text;
+                }
+                settUIFilters.CallIdFilterText = sCallIdRegex;
+            }
+
+            settUIFilters.DateTimeFrom = cbDateFrom.Checked
+                ? DateTime.ParseExact(dtpDateTimeFrom.Text,
+                    "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal)
+                : (DateTime?)null;
+
+            settUIFilters.DateTimeTo = cbDateTo.Checked
+                ? DateTime.ParseExact(dtpDateTo.Text,
+                    "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal)
+                : (DateTime?)null;
+
+            settUIFilters.IncludeSIP200 = cbIncludeSIP200OK.Checked;
+
+            return settUIFilters;
+        }
 
         private void cbAutoFilterCallId_CheckedChanged(object sender, EventArgs e)
         {
@@ -402,6 +400,14 @@ namespace ParseTHSMsg
             {
                 this.tbAutoFilterCallId.Focus();
                 this.tbAutoFilterCallId.SelectAll();
+            }
+        }
+
+        private void llReport_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            if(sLastReportUrl!=null)
+            { 
+                Process.Start(sLastReportUrl);
             }
         }
     }
@@ -443,6 +449,3 @@ namespace ParseTHSMsg
         }
     }
 }
-
-
-

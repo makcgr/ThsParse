@@ -61,3 +61,18 @@ body
 .directionSym {
 	font-size: 20px;
 }
+
+.timestampStr {	
+    font-weight: bold;
+}
+
+.caption {	
+    font-weight: bold;
+}
+
+.description {
+    font-family: "Consolas", "Lucida Sans Unicode", "Lucida Grande", Sans-Serif;
+	font-size: 20px;
+    color: #039;
+    padding: 20px 0px 0px 45px
+}

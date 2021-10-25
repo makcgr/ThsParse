@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xs="http://www.w3.org/2001/XMLSchema" attributeFormDefault="unqualified" elementFormDefault="qualified">
+  <xsd:element name="MessageList">
+    <xsd:complexType>
+      <xsd:sequence>
+        <xsd:element name="Messages">
+          <xsd:complexType>
+            <xsd:sequence>
+              <xsd:element maxOccurs="unbounded" name="Message">
+                <xsd:complexType>
+                  <xsd:sequence>
+                    <xsd:element name="Caption" type="xsd:string" />
+                    <xsd:element name="SourceType" type="xsd:string" />
+                    <xsd:element name="isIncoming" type="xsd:boolean" />
+                    <xsd:element name="Time" type="xsd:dateTime" />
+                    <xsd:element name="Text" type="xsd:string" />
+                  </xsd:sequence>
+                </xsd:complexType>
+              </xsd:element>
+            </xsd:sequence>
+          </xsd:complexType>
+        </xsd:element>
+      </xsd:sequence>
+    </xsd:complexType>
+  </xsd:element>
+</xs:schema>

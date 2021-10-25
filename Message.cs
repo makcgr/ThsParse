@@ -36,7 +36,13 @@ namespace ParseTHSMsg
         [XmlArray("Messages")]
         [XmlArrayItem("Message")]
         public List<Message> Messages { get; set; }
+        
+        public string TraceSetDescription { get; set; }
+        
+        public string CallIdFilter { get; set; }
 
+        public string DateTimeStr { get; set; }
+        
         public MessageList() { }
 
         public MessageList(IEnumerable<Message> messages)

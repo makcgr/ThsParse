@@ -61,10 +61,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.WindowsAPICodePack">
-      <HintPath>..\..\Dev\Windows API Code Pack 1.1\binaries\Microsoft.WindowsAPICodePack.dll</HintPath>
+      <HintPath>Lib\Microsoft.WindowsAPICodePack.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.WindowsAPICodePack.Shell">
-      <HintPath>..\..\Dev\Windows API Code Pack 1.1\binaries\Microsoft.WindowsAPICodePack.Shell.dll</HintPath>
+      <HintPath>Lib\Microsoft.WindowsAPICodePack.Shell.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -78,6 +78,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AutomaticParsing\LogProcessorSettings.cs" />
+    <Compile Include="AutomaticParsing\SettingsSerializer.cs" />
+    <Compile Include="AutomaticParsing\UIFilterSettings.cs" />
+    <Compile Include="ClipboardParsing\ClipboardParser.cs" />
+    <Compile Include="ClipboardParsing\ClipboardParserSettings.cs" />
+    <Compile Include="AutomaticParsing\MessageMatcherSettings.cs" />
     <Compile Include="Entities.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
@@ -85,10 +91,11 @@
     <Compile Include="MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="LogProcessor.cs" />
+    <Compile Include="AutomaticParsing\LogProcessor.cs" />
     <Compile Include="Message.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ReportCreation\ReportCreator.cs" />
     <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
     </EmbeddedResource>
@@ -101,6 +108,10 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <EmbeddedResource Include="AutomaticParsing\Settings\LogMatchingSettings.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -115,6 +126,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="icon.ico" />
     <Content Include="XML\sample.xml" />
     <Content Include="XML\style.css">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -122,8 +134,10 @@
     <Content Include="XML\template.html" />
     <Content Include="XML\transform.xsl">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
     </Content>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
